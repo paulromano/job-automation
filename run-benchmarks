@@ -1,0 +1,68 @@
+#!/bin/bash
+
+#PBS -l nodes=2:ppn=8
+#PBS -l walltime=48:00:00
+#PBS -M paul.k.romano@gmail.com
+#PBS -m e
+#PBS -j oe
+
+# Abort on error
+set -e
+
+# Change directory to the path where the script is
+if [[ -e $PBS_JOBID ]]; then
+    cd $PBS_O_WORKDIR
+    PATH=$PBS_O_PATH
+    directory=$PBS_JOBID
+else
+    directory=$(date +"%Y-%m-%d-%H%M%S")
+fi
+
+: ${list:=benchmarks/lists/mcnp-criticality-validation}
+: ${particles:=5000}
+: ${batches:=550}
+: ${inactive:=50}
+
+mkdir -p $directory
+cd $directory
+
+# Get copy of benchmarks repository and switch to nndc branch
+if [[ ! -d benchmarks ]]; then
+    git clone git@github.com:mit-crpg/benchmarks.git
+fi
+
+# Prepare benchmarks
+echo Modifying run parameters...
+for benchmark in $(cat $list); do
+    sed -i -r -e "s:(<particles>).*(</particles>):\1${particles}\2:g" \
+        -e "s:(<inactive>).*(</inactive>):\1${inactive}\2:g" \
+        -e "s:(<batches>).*(</batches>):\1${batches}\2:g" \
+        benchmarks/${benchmark}/settings.xml
+done
+
+# Run benchmarks
+i=0
+basedir=$PWD
+echo "Running benchmarks..."
+for benchmark in $(cat $list); do
+    # Update progress bar
+    i=$(expr $i \+ 1)
+    echo $i $benchmark
+
+    # Run openmc
+    cd benchmarks/${benchmark}
+    output=output_$directory
+    if [[ -e $PBS_JOBID ]]; then
+	mpiexec -rmk pbs openmc > $output 2>&1
+    else
+	openmc > $output 2>&1
+    fi
+    cd $basedir
+
+    # Get k-effective
+    k_mean=$(cat benchmarks/${benchmark}/$output | grep -a Combined | \
+        sed -r -e 's_.*=(.*)\+/-.*_\1_g')
+    k_unc=$(cat benchmarks/${benchmark}/$output | grep -a Combined | \
+        sed -r -e 's_.*\+/-(.*)_\1_g')
+    echo $benchmark $k_mean $k_unc >> results
+done
