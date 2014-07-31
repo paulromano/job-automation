@@ -10,7 +10,7 @@
 set -e
 
 # Change directory to the path where the script is
-if [[ -e $PBS_JOBID ]]; then
+if [[ ! -z $PBS_JOBID ]]; then
     cd $PBS_O_WORKDIR
     PATH=$PBS_O_PATH
     directory=$PBS_JOBID
@@ -52,7 +52,7 @@ for benchmark in $(cat $list); do
     # Run openmc
     cd benchmarks/${benchmark}
     output=output_$directory
-    if [[ -e $PBS_JOBID ]]; then
+    if [[ ! -z $PBS_JOBID ]]; then
 	mpiexec -rmk pbs openmc > $output 2>&1
     else
 	openmc > $output 2>&1
