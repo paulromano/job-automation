@@ -6,6 +6,11 @@
 #PBS -m e
 #PBS -j oe
 
+: ${list:=benchmarks/lists/mcnp-criticality-validation}
+: ${particles:=5000}
+: ${batches:=550}
+: ${inactive:=50}
+
 # Abort on error
 set -e
 
@@ -17,12 +22,6 @@ if [[ ! -z $PBS_JOBID ]]; then
 else
     directory=$(date +"%Y-%m-%d-%H%M%S")
 fi
-
-: ${list:=benchmarks/lists/mcnp-criticality-validation}
-: ${particles:=5000}
-: ${batches:=550}
-: ${inactive:=50}
-
 mkdir -p $directory
 cd $directory
 
