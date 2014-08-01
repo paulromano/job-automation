@@ -1,0 +1,50 @@
+#!/bin/bash
+
+#PBS -l nodes=1:ppn=8
+#PBS -l walltime=24:00:00
+#PBS -j oe
+
+: ${remote:=mit-crpg}
+: ${branch:=develop}
+
+# Abort on error
+set -e
+
+# Change directory to the path where the script is
+if [[ ! -z $PBS_JOBID ]]; then
+    cd $PBS_O_WORKDIR
+    PATH=$PBS_O_PATH
+    directory=$PBS_JOBID
+else
+    directory=$(date +"%Y-%m-%d-%H%M%S")
+fi
+mkdir -p $directory
+cd $directory
+
+# Get OpenMC repository
+git clone git@github.com:$remote/openmc.git
+cd openmc
+git branch --track $branch origin/$branch
+git checkout $branch
+sed -i -e 's_https://github\.com/_git@github\.com:_' .gitmodules
+
+# Set CDash user/pass
+sed -r -i -e 's/(.*CTEST_DROP_SITE_USER ).*/\1\"romano\"\)/' \
+    -e 's/(.*CTEST_DROP_SITE_PASSWORD ).*/\1\"PASSWORDHERE\"\)/' src/CTestConfig.cmake
+
+# Set environment variables / compiler options
+if [[ $(hostname) == *kilkenny* ]]; then
+    export PATH=/opt/gcc/4.9.0/bin:$PATH
+    export LD_LIBRARY_PATH=/opt/gcc/4.9.0/lib64:$LD_LIBRARY_PATH
+    export CROSS_SECTIONS=/home/shared/nndc/cross_sections.xml
+    export FC=gfortran
+    export MPI_DIR=/opt/mpich/3.1-gnu
+    export HDF5_DIR=/opt/hdf5/1.8.12-gnu
+    export PHDF5_DIR=/opt/phdf5/1.8.12-gnu
+    export PETSC_DIR=/opt/petsc/3.4.4-gnu
+    export OMP_NUM_THREADS=3
+fi
+
+# Run tests and submit results
+cd tests
+python run_tests.py -D Experimental -p $branch
