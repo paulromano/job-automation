@@ -33,7 +33,7 @@ sed -r -i -e 's/(.*CTEST_DROP_SITE_USER ).*/\1\"romano\"\)/' \
     -e 's/(.*CTEST_DROP_SITE_PASSWORD ).*/\1\"PASSWORDHERE\"\)/' src/CTestConfig.cmake
 
 # Set environment variables / compiler options
-if [[ $(hostname) == *kilkenny* ]]; then
+if [[ $(hostname) == *bw01.mit.edu* ]]; then
     export PATH=/opt/gcc/4.9.0/bin:$PATH
     export LD_LIBRARY_PATH=/opt/gcc/4.9.0/lib64:$LD_LIBRARY_PATH
     export CROSS_SECTIONS=/home/shared/nndc/cross_sections.xml
